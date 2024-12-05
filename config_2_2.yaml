@@ -1,8 +1,8 @@
-name: nodes-1-devices-2
+name: nodes-2-devices-2 
 
 trainer:
-  num_nodes: 1
-  devices: auto
+  num_nodes: 2
+  devices: auto 
   num_sanity_val_steps: 0
   max_epochs: 100
   fast_dev_run: false 

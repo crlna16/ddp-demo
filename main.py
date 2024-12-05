@@ -29,35 +29,35 @@ def main(config_file):
     logger.log_hyperparams(locals())
 
     # setup the datamodule
-    log.info('Setting up the datamodule...')
+    print('Setting up the datamodule...')
     datamodule = Food101DataModule(batch_size=256)
     datamodule.prepare_data()
     datamodule.setup(stage='train')
 
     # setup the model
-    log.info('Setting up the model...')
+    print('Setting up the model...')
     model = Food101Model()
 
     # setup the callbacks
-    log.info('Setting up the callbacks...')
+    print('Setting up the callbacks...')
     callbacks = [EarlyStopping(monitor='val/accuracy', mode='max', patience=3)]
 
     # setup the trainer
-    log.info('Setting up the trainer...')
-    log.info('Trainer config', config['trainer'])
+    print('Setting up the trainer...')
+    print('Trainer config', config['trainer'])
     trainer = L.Trainer(logger=logger,
                         callbacks=callbacks,
                         **config['trainer']
                         )
 
     # fit
-    log.info('Starting the fit')
+    print('Starting the fit')
     t0 = time.time()
     trainer.fit(model, datamodule)
-    log.info(f'Model completed {model.current_epoch - 1} epochs in {time.time() - t0:.2f} seconds')
+    print(f'Model completed {model.current_epoch - 1} epochs in {time.time() - t0:.2f} seconds')
 
     # test
-    log.info('Entering test stage...')
+    print('Entering test stage...')
     test_datamodule = Food101DataModule(batch_size=12)
     test_datamodule.prepare_data(split='test')
     test_datamodule.setup(stage='test')
@@ -76,18 +76,17 @@ def main(config_file):
 
         all_y.append(y.cpu().numpy())
         all_yhat.append(yhat.cpu().numpy())
-        break
 
-    log.info('Finished test set predictions')
+    print('Finished test set predictions')
 
     all_y = np.concatenate(all_y)
     all_yhat = np.concatenate(all_yhat)
 
-    log.info('Calculation multiclass accuracy...')
+    print('Calculating multiclass accuracy...')
 
     macc = accuracy_score(all_y, all_yhat)
 
-    log.info(f'Mean accuracy: {macc:.4f}')
+    print(f'Mean accuracy: {macc:.4f}')
 
 
 

@@ -1,5 +1,7 @@
 *.pyc
 4*
+6*
+7*
 mlflow-logs/
 data/
 *.out
