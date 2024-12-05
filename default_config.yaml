@@ -1,0 +1,5 @@
+name: default
+
+trainer:
+  num_nodes: 1
+  devices: auto
