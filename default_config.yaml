@@ -3,3 +3,6 @@ name: default
 trainer:
   num_nodes: 1
   devices: auto
+  num_sanity_val_steps: 0
+  max_epochs: 100
+  fast_dev_run: true 

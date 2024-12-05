@@ -1,5 +1,7 @@
+*.pyc
 4*
 mlflow-logs/
 data/
 *.out
 *.sh
+lightning_logs/

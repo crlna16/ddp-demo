@@ -1,12 +1,21 @@
 import sys
+import time
+import numpy as np
+import torch
 import lightning as L
-from lightning.pytorch.callbacks import EarlyStopping, Timer
+from lightning.pytorch.callbacks import EarlyStopping
+from lightning.pytorch.utilities import rank_zero_only
+from sklearn.metrics import accuracy_score
 
 from omegaconf import OmegaConf
 from modules import Food101DataModule, Food101Model
 
 import logging
-log = logging.getLogger()
+log = logging.getLogger(__name__)
+log.addHandler(logging.StreamHandler(sys.stdout))
+
+for level in ( "debug", "info", "warning", "error", "exception", "fatal", "critical",):
+        setattr(log, level, rank_zero_only(getattr(log, level)))
 
 def main(config_file):
     config = OmegaConf.load(config_file)
@@ -31,39 +40,54 @@ def main(config_file):
 
     # setup the callbacks
     log.info('Setting up the callbacks...')
-    callbacks = [EarlyStopping(monitor='val/accuracy', mode='max', patience=3),
-                 Timer()]
+    callbacks = [EarlyStopping(monitor='val/accuracy', mode='max', patience=3)]
 
     # setup the trainer
     log.info('Setting up the trainer...')
     log.info('Trainer config', config['trainer'])
-    trainer = L.Trainer(max_epochs=500,
-                        logger=logger,
+    trainer = L.Trainer(logger=logger,
                         callbacks=callbacks,
                         **config['trainer']
                         )
 
     # fit
     log.info('Starting the fit')
+    t0 = time.time()
     trainer.fit(model, datamodule)
-
-    log.info('Timer callback report')
-    for c in callbacks :
-        try:
-            log.info(f'Training took {c.time_elapsed():.0f} seconds')
-            log.info(f'Validation took {c.time_elapsed("validate"):.0f} seconds')
-        except:
-            pass
+    log.info(f'Model completed {model.current_epoch - 1} epochs in {time.time() - t0:.2f} seconds')
 
     # test
-    test_datamodule = Food101DataModule(batch_size=512)
+    log.info('Entering test stage...')
+    test_datamodule = Food101DataModule(batch_size=12)
     test_datamodule.prepare_data(split='test')
-    test_datamodule.setup(stage='train')
+    test_datamodule.setup(stage='test')
+    
+    # quick manual loop
+    test_dataloader = test_datamodule.test_dataloader()
 
-    test_trainer = L.Trainer(devices=1, num_nodes=1)
+    all_y = []
+    all_yhat = []
 
-    test_trainer.test(model, datamodule=test_datamodule)
+    for i, batch in enumerate(test_dataloader):
+        x, y = batch
+        with torch.no_grad():
+            logits = model(x)
+            yhat = torch.argmax(torch.softmax(logits, dim=1), dim=1)
 
+        all_y.append(y.cpu().numpy())
+        all_yhat.append(yhat.cpu().numpy())
+        break
+
+    log.info('Finished test set predictions')
+
+    all_y = np.concatenate(all_y)
+    all_yhat = np.concatenate(all_yhat)
+
+    log.info('Calculation multiclass accuracy...')
+
+    macc = accuracy_score(all_y, all_yhat)
+
+    log.info(f'Mean accuracy: {macc:.4f}')
 
 
 

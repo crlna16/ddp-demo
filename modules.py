@@ -84,28 +84,30 @@ class Food101Model(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        yhat = self.backbone(x)
-        loss = self.loss_fn(yhat, y)
+        logits = self.backbone(x)
+        loss = self.loss_fn(logits, y)
         self.log('train/loss', loss)
-
         return loss
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        yhat = self.backbone(x)
-        loss = self.loss_fn(yhat, y)
+        logits = self.backbone(x)
+        loss = self.loss_fn(logits, y)
+
+        yhat = torch.argmax(torch.softmax(logits, dim=1), dim=1)
         self.val_metric(yhat, y)
         self.log('val/loss', loss, sync_dist=True)
         self.log('val/accuracy', self.val_metric, sync_dist=True)
 
     def test_step(self, batch, batch_idx):
         x, y = batch
-        yhat = self.backbone(x)
-        loss = self.loss_fn(yhat, y)
+        logits = self.backbone(x)
+        loss = self.loss_fn(logits, y)
+        yhat = torch.argmax(torch.softmax(logits, dim=1), dim=1)
         self.val_metric(yhat, y)
         self.log('test/loss', loss, sync_dist=True)
         self.log('test/accuracy', self.val_metric, sync_dist=True)
-        return yhat
+        return yhat 
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3)
